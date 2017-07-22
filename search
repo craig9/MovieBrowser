@@ -1,0 +1,23 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
+import time
+import sys
+
+from Search import Search
+
+s = Search('/mnt/media/Movies')
+
+s.build_sql(sys.argv[1:])
+#s.print_sql()
+results = s.get_results()
+
+for r in results:
+    print ", ".join(str(field) for field in r)
+
+print
+print len(results), "results found"
+ 
+# TODO When there are multiple files, tell VLC to play them in order - by using spaces between the filenames
+# #vlc --fullscreen --no-repeat --no-loop --play-and-exit --no-video-title-show SPACE_SEPARATED_FILES
+

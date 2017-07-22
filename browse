@@ -1,0 +1,131 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
+import os
+import sys
+import wx, wx.grid
+from Search import Search
+import webbrowser
+
+class MainWindow(wx.Frame):
+    def __init__(self, parent, title):
+        wx.Frame.__init__(self, parent, title=title, size=(1280,768))
+
+        #self.icon = wx.Icon("/usr/share/vlc/vlc.ico", wx.BITMAP_TYPE_ICO)
+        self.icon = wx.Icon("/usr/share/icons/HighContrast/256x256/devices/camera-video.png", wx.BITMAP_TYPE_PNG)
+        self.SetIcon(self.icon)
+
+        self.searchBox = wx.TextCtrl(self)
+
+        self.resultGrid = wx.grid.Grid(self)
+        
+        self.resultGrid.CreateGrid(0, 7)
+        self.resultGrid.SetColSize(0, 450) # title
+        self.resultGrid.SetColSize(1, 150) # year
+        self.resultGrid.SetColSize(2, 150) # rating
+        self.resultGrid.SetColSize(3, 150) # resolution
+        self.resultGrid.SetColSize(4, 350) # genres
+        self.resultGrid.SetColSize(5, 150) # filesize
+        self.resultGrid.SetColSize(6, 150) # runtime
+
+        self.resultGrid.HideRowLabels()
+        self.resultGrid.SetColLabelValue(0, "Title")
+        self.resultGrid.SetColLabelValue(1, "Year")
+        self.resultGrid.SetColLabelValue(2, "Rating")
+        self.resultGrid.SetColLabelValue(3, "Resolution")
+        self.resultGrid.SetColLabelValue(4, "Genres")
+        self.resultGrid.SetColLabelValue(5, "Filesize")
+        self.resultGrid.SetColLabelValue(6, "Runtime")
+
+        self.resultGrid.EnableEditing(False)
+        self.resultGrid.SetSelectionMode(wx.grid.Grid.wxGridSelectRows)
+        self.resultGrid.EnableGridLines(False) 
+
+        self.rowCount = 0
+
+        self.Bind(wx.EVT_TEXT, self.OnSearchBoxChange, self.searchBox)
+
+        self.resultGrid.Bind(wx.EVT_KEY_DOWN, self.OnResultGridKeyDown)
+        self.resultGrid.Bind(wx.EVT_CHAR, self.OnResultGridChar)
+        self.resultGrid.Bind(wx.grid.EVT_GRID_SELECT_CELL, self.OnResultGridSelectCell)
+
+        self.sizer = wx.BoxSizer(wx.VERTICAL)
+        self.sizer.Add(self.searchBox, 0, wx.EXPAND)
+        self.sizer.Add(self.resultGrid, 1, wx.EXPAND)
+
+        self.CreateStatusBar()
+
+        self.search = Search('/mnt/media/Movies')
+
+        self.SetSizer(self.sizer)
+
+        self.OnSearchBoxChange(None)
+        self.Maximize(True)
+        self.Show(True)
+
+    def OnSearchBoxChange(self, event):
+        search_words = self.searchBox.GetValue().split(" ")
+
+        self.search.build_sql(search_words)
+        self.search.print_sql()
+
+        self.results = self.search.get_results()
+
+        self.resultGrid.Scroll(0, 0)
+        while self.rowCount > 0:
+            self.resultGrid.DeleteRows(self.rowCount-1, 1)
+            self.rowCount -= 1
+
+        for r in self.results:
+            self.resultGrid.AppendRows(1)
+            try:
+                self.resultGrid.SetCellValue(self.rowCount, 0, str(r[0]))
+                self.resultGrid.SetCellValue(self.rowCount, 1, str(r[1]))
+                self.resultGrid.SetCellValue(self.rowCount, 2, str(r[2]))
+                self.resultGrid.SetCellValue(self.rowCount, 3, str(r[3]))
+                self.resultGrid.SetCellValue(self.rowCount, 4, str(r[4]))
+                self.resultGrid.SetCellValue(self.rowCount, 5, str(r[5]))
+                self.resultGrid.SetCellValue(self.rowCount, 6, str(r[6]))
+            except:
+                print(r)
+                sys.exit(-1)
+            self.rowCount += 1
+
+        self.SetStatusText( str(len(self.results)) + " results found")
+
+    def OnResultGridKeyDown(self, event):
+        keycode = event.GetKeyCode()
+        if keycode == wx.WXK_RETURN or keycode == wx.WXK_NUMPAD_ENTER:
+            result = self.results[self.selected_row]
+            title = result[0]
+            filenames = " ".join(['"' + filename + '"' for filename in sorted(result[7].split(";"))])
+            print "Playing", title
+            cmd = "vlc --fullscreen --no-repeat --no-loop --play-and-exit --no-video-title-show " + filenames
+            print cmd
+            os.system(cmd)
+        elif keycode == wx.WXK_TAB:
+            self.searchBox.SetFocus()
+        event.Skip()
+
+    def OnResultGridChar(self, event):
+        keycode = event.GetKeyCode()
+        if keycode == 105:
+            row = self.results[self.selected_row]
+            title = row[0]
+            search_string = title.replace(" ", "%20")
+            url = "http://www.imdb.com/find?q=%s" % search_string
+            print "i was pressed, opening %s" % url
+            webbrowser.open(url, 2, True)
+        event.Skip()
+
+
+    def OnResultGridSelectCell(self, event):
+        self.selected_row = event.GetRow()
+
+app = wx.App(False)  # Don't redirect stdout/stderr to a window.
+frame = MainWindow(None, "Movie Browser")
+app.MainLoop()
+
+# TODO When there are multiple files, tell VLC to play them in order - by using spaces between the filenames
+# #vlc --fullscreen --no-repeat --no-loop --play-and-exit --no-video-title-show SPACE_SEPARATED_FILES
+

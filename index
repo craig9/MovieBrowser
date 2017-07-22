@@ -1,0 +1,83 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
+import time
+import sys
+
+from Utilities import *
+from Log import Log
+from Database import Database
+from Movie import Movie
+from Progress import Progress
+
+# TODO SOONER
+
+# Remove anything in the index where the file no longer exists on disk.
+
+# Rather than being dumb like most other programs, hold the list of files to remove in RAM. If the number changes by more than some threshold (5% is a good start), then it's likely the movie folder has been renamed or some other user-error. Give the user chance to back out without changes in that instance.
+
+
+# TODO Indexer class
+
+
+def main():
+
+    # TODO When there are multiple files, tell VLC to play them in order - by using spaces between the filenames
+    # #vlc --fullscreen --no-repeat --no-loop --play-and-exit --no-video-title-show SPACE_SEPARATED_FILES
+
+    movies_root = '/mnt/media/Movies/'
+
+    db = Database(movies_root)
+    log = Log(movies_root)
+    progress = Progress(log)
+
+    movie_list = []
+
+    subdirs = get_subdirs(movies_root)
+    subdir_count = len(subdirs)
+
+    deleting = "-d" in sys.argv[1:]
+
+    log.status("%d subdirs found in movie directory" % subdir_count)
+
+    for subdir in subdirs:
+        m = Movie(subdir, log) # Loads up nfo and movie files into lists
+
+        if m.is_in_db(db) and m.is_up_to_date(db):
+            m.read_from_db(db)
+
+        else: # Haven't seen it before
+            m.read_from_disk()
+            m.delete_from_db(db)
+            m.insert_to_db(db)
+
+        movie_list.append(m)
+
+        progress.update_log(len(movie_list), len(subdirs))
+
+    missing_count = 0
+    for filenames in db.get_movie_filenames(): # Check for missing files
+        filenames = filenames[0]
+        file_list = filenames.split(";")
+        for f in file_list:
+            any_missing = False
+            if not os.path.isfile(f):
+                any_missing = True
+            if any_missing:
+                log.warn("Files were missing from set: %s" % filenames)
+                if deleting:
+                    log.warn("DELETING from db")
+                    db.exec_sql("DELETE FROM movies WHERE filenames = ?", [filenames])
+                    break 
+                missing_count += 1
+    if deleting:
+         pass
+    elif missing_count > 0:
+        print "%d movies had missing files. Run the program again with the -d option to delete these" % missing_count
+
+    progress.final_log()
+    print
+
+if __name__ == '__main__':
+    main()
+ 
