@@ -77,3 +77,27 @@ def nice_time(seconds):
         return "%.1f minutes" % (seconds / float(60))
     else:
         return "%d seconds" % seconds
+
+def get_files(folder):
+    for root, subdirs, files in os.walk(folder):
+        subdirs.sort()
+        for f in sorted(files):
+            yield(os.path.join(root, f))
+
+def get_folders(root):
+    for folder in sorted(os.listdir(root)):
+        full_folder = os.path.join(root, folder)
+        if os.path.isdir(full_folder):
+            yield full_folder
+
+def is_video(filename):
+    movie_suffixes = ['avi', 'm4v', 'mkv', 'mp4', 'mov', 'divx', 'fanart.jpg', 'mpg', 'flv', 'ogm']
+
+    parts = filename.rsplit(".", 1)
+
+    return len(parts) == 2 and parts[1] in movie_suffixes
+
+def get_videos(folder):
+    for f in get_files(folder):
+        if is_video(f):
+            yield f

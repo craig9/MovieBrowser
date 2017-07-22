@@ -1,0 +1,133 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
+import os
+import sys
+import wx, wx.grid
+import webbrowser
+from Utilities import get_folders, get_videos
+
+class MainWindow(wx.Frame):
+    def __init__(self, parent, title):
+        wx.Frame.__init__(self, parent, title=title, size=(1280,768))
+
+        self.icon = wx.Icon("/usr/share/icons/HighContrast/256x256/devices/camera-video.png", wx.BITMAP_TYPE_PNG)
+        self.SetIcon(self.icon)
+
+        self.resultGrid = wx.grid.Grid(self)
+        
+        self.resultGrid.CreateGrid(0, 3)
+        self.resultGrid.SetColSize(0, 50) # star
+        self.resultGrid.SetColSize(1, 650) # title
+        self.resultGrid.SetColSize(2, 80) # watched
+
+        self.resultGrid.HideRowLabels()
+        self.resultGrid.SetColLabelValue(0, "Star")
+        self.resultGrid.SetColLabelValue(1, "Title")
+        self.resultGrid.SetColLabelValue(2, "Watched")
+
+        self.resultGrid.EnableEditing(False)
+        self.resultGrid.SetSelectionMode(wx.grid.Grid.wxGridSelectRows)
+        self.resultGrid.EnableGridLines(False) 
+
+        self.rowCount = 0
+
+        self.resultGrid.Bind(wx.EVT_KEY_DOWN, self.OnResultGridKeyDown)
+        self.resultGrid.Bind(wx.EVT_CHAR, self.OnResultGridChar)
+        self.resultGrid.Bind(wx.grid.EVT_GRID_SELECT_CELL, self.OnResultGridSelectCell)
+
+        self.sizer = wx.BoxSizer(wx.VERTICAL)
+        self.sizer.Add(self.resultGrid, 0, wx.EXPAND)
+
+        self.CreateStatusBar()
+
+        self.path = '/mnt/media/TV'
+        self.root_folders = None
+
+        self.SetSizer(self.sizer)
+
+        self.Populate()
+
+        self.Maximize(True)
+        self.Show(True)
+
+    def Populate(self, path=None):
+
+        self.resultGrid.Scroll(0, 0)
+        while self.rowCount > 0:
+            self.resultGrid.DeleteRows(self.rowCount-1, 1)
+            self.rowCount -= 1
+
+        self.current_path = path
+
+        if path is None:
+            self.items = list(get_folders(self.path))
+        else:
+            self.items = list(get_videos(path))
+
+        for item in self.items:
+            
+            item = os.path.split(item)[-1]
+
+            self.resultGrid.AppendRows(1)
+            try:
+                self.resultGrid.SetCellValue(self.rowCount, 0, str(''))
+                self.resultGrid.SetCellValue(self.rowCount, 1, str(item))
+                self.resultGrid.SetCellValue(self.rowCount, 2, str(''))
+            except:
+                print("Error")
+                sys.exit(-1)
+            self.rowCount += 1
+
+        if path is None:
+            self.SetStatusText( str(self.rowCount) + " shows found")
+        else:
+            self.SetStatusText( str(self.rowCount) + " files found")
+
+
+    def PlayMovie(self):
+        title = self.items[self.selected_row]
+        filename = os.path.join(self.current_path, title)
+
+        print "Playing", title
+        cmd = "vlc --fullscreen --no-repeat --no-loop --play-and-exit --no-video-title-show \"" + filename + "\""
+        print cmd
+
+        os.system(cmd)
+
+    def OnResultGridKeyDown(self, event):
+        keycode = event.GetKeyCode()
+        if keycode == wx.WXK_RETURN or keycode == wx.WXK_NUMPAD_ENTER:
+            current_dir = self.items[self.selected_row]
+
+            full_dir = os.path.join(self.path, current_dir)
+
+            if os.path.isdir(full_dir):
+                self.Populate(full_dir)
+            else:
+                self.PlayMovie()
+
+        elif keycode == wx.WXK_BACK:
+            print "Backspace was pressed, repopulating with base dir"
+            self.Populate()
+        event.Skip()
+
+    def OnResultGridChar(self, event):
+        keycode = event.GetKeyCode()
+        if keycode == 105:
+            row = self.results[self.selected_row]
+            title = row[0]
+            search_string = title.replace(" ", "%20")
+            url = "http://www.imdb.com/find?q=%s" % search_string
+            print "i was pressed, opening %s" % url
+            webbrowser.open(url, 2, True)
+        event.Skip()
+
+
+    def OnResultGridSelectCell(self, event):
+        self.selected_row = event.GetRow()
+
+app = wx.App(False)  # Don't redirect stdout/stderr to a window.
+frame = MainWindow(None, "TV Browser")
+app.MainLoop()
+
