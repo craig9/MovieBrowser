@@ -78,7 +78,7 @@ def nice_time(seconds):
     else:
         return "%d seconds" % seconds
 
-def get_files(folder):
+def get_all_files(folder):
     for root, subdirs, files in os.walk(folder):
         subdirs.sort()
         for f in sorted(files):

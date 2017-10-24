@@ -111,6 +111,32 @@ class Search:
 
                 next_op = "AND"
 
+            elif arg.startswith("sort:"):
+                arg = arg[5:]
+                if arg in ['year', 'rating']:
+                    order = " " + arg
+                elif arg in ['genre']:
+                    order = " genres"
+                elif arg in ['size']:
+                    order = " CAST (filesize AS INTEGER)"
+                elif arg in ['res']:
+                    order = " resolution DESC"
+                elif arg in ['runtime']:
+                    order = " CAST (" + arg + " AS INTEGER)"
+
+            elif arg.startswith("dsort:"):
+                arg = arg[6:]
+                if arg in ['year', 'rating']:
+                    order = " " + arg + " DESC"
+                elif arg in ['genre']:
+                    order = " genres DESC"
+                elif arg in ['size']:
+                    order = " CAST (filesize AS INTEGER) DESC"
+                elif arg in ['res']:
+                    order = " resolution"
+                elif arg in ['runtime']:
+                    order = " CAST (" + arg + " AS INTEGER) DESC"
+
             elif arg == "or":
                 next_op = "OR"
 
