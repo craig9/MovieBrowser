@@ -39,6 +39,7 @@ class MainWindow(wx.Frame):
 
         self.resultGrid.EnableEditing(False)
         self.resultGrid.SetSelectionMode(wx.grid.Grid.wxGridSelectRows)
+        self.resultGrid.SetCellHighlightPenWidth(0)
         self.resultGrid.EnableGridLines(False) 
 
         self.rowCount = 0

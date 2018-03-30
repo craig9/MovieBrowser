@@ -98,6 +98,6 @@ def is_video(filename):
     return len(parts) == 2 and parts[1] in movie_suffixes
 
 def get_videos(folder):
-    for f in get_files(folder):
+    for f in get_all_files(folder):
         if is_video(f):
             yield f

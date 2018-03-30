@@ -11,7 +11,7 @@ class MainWindow(wx.Frame):
     def __init__(self, parent, title):
         wx.Frame.__init__(self, parent, title=title, size=(1280,768))
 
-        self.icon = wx.Icon("/usr/share/icons/HighContrast/256x256/devices/camera-video.png", wx.BITMAP_TYPE_PNG)
+        self.icon = wx.Icon("/usr/share/icons/HighContrast/256x256/devices/tv.png", wx.BITMAP_TYPE_PNG)
         self.SetIcon(self.icon)
 
         self.resultGrid = wx.grid.Grid(self)
@@ -28,6 +28,8 @@ class MainWindow(wx.Frame):
 
         self.resultGrid.EnableEditing(False)
         self.resultGrid.SetSelectionMode(wx.grid.Grid.wxGridSelectRows)
+        self.resultGrid.SetCellHighlightPenWidth(0)
+        self.resultGrid.DisableDragRowSize()
         self.resultGrid.EnableGridLines(False) 
 
         self.rowCount = 0
@@ -50,6 +52,7 @@ class MainWindow(wx.Frame):
 
         self.Maximize(True)
         self.Show(True)
+        self.resultGrid.SetFocus()
 
     def Populate(self, path=None):
 
@@ -80,12 +83,12 @@ class MainWindow(wx.Frame):
             self.rowCount += 1
 
         if path is None:
-            self.SetStatusText( str(self.rowCount) + " shows found")
+            self.SetStatusText( str(self.rowCount) + " TV shows found")
         else:
-            self.SetStatusText( str(self.rowCount) + " files found")
+            self.SetStatusText( str(self.rowCount) + " episodes found")
 
 
-    def PlayMovie(self):
+    def PlayVideo(self):
         title = self.items[self.selected_row]
         filename = os.path.join(self.current_path, title)
 
@@ -97,7 +100,7 @@ class MainWindow(wx.Frame):
 
     def OnResultGridKeyDown(self, event):
         keycode = event.GetKeyCode()
-        if keycode == wx.WXK_RETURN or keycode == wx.WXK_NUMPAD_ENTER:
+        if keycode == wx.WXK_RETURN or keycode == wx.WXK_NUMPAD_ENTER or keycode == wx.WXK_RIGHT:
             current_dir = self.items[self.selected_row]
 
             full_dir = os.path.join(self.path, current_dir)
@@ -105,16 +108,19 @@ class MainWindow(wx.Frame):
             if os.path.isdir(full_dir):
                 self.Populate(full_dir)
             else:
-                self.PlayMovie()
+                self.PlayVideo()
 
         elif keycode == wx.WXK_BACK:
-            print "Backspace was pressed, repopulating with base dir"
             self.Populate()
+
+        elif keycode == wx.WXK_LEFT:
+            self.Populate()
+
         event.Skip()
 
     def OnResultGridChar(self, event):
         keycode = event.GetKeyCode()
-        if keycode == 105:
+        if keycode == 105: # i key
             row = self.results[self.selected_row]
             title = row[0]
             search_string = title.replace(" ", "%20")
@@ -125,7 +131,9 @@ class MainWindow(wx.Frame):
 
 
     def OnResultGridSelectCell(self, event):
+        print "Selected Row:", event.GetRow()
         self.selected_row = event.GetRow()
+        self.resultGrid.SelectRow(event.GetRow())
 
 app = wx.App(False)  # Don't redirect stdout/stderr to a window.
 frame = MainWindow(None, "TV Browser")
