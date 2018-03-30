@@ -37,6 +37,7 @@ class MainWindow(wx.Frame):
         self.resultGrid.Bind(wx.EVT_KEY_DOWN, self.OnResultGridKeyDown)
         self.resultGrid.Bind(wx.EVT_CHAR, self.OnResultGridChar)
         self.resultGrid.Bind(wx.grid.EVT_GRID_SELECT_CELL, self.OnResultGridSelectCell)
+        self.resultGrid.Bind(wx.grid.EVT_GRID_CELL_LEFT_DCLICK, self.OnResultGridDoubleClick)
 
         self.sizer = wx.BoxSizer(wx.VERTICAL)
         self.sizer.Add(self.resultGrid, 0, wx.EXPAND)
@@ -48,6 +49,7 @@ class MainWindow(wx.Frame):
 
         self.SetSizer(self.sizer)
 
+        self.inRoot = True
         self.Populate()
 
         self.Maximize(True)
@@ -64,8 +66,10 @@ class MainWindow(wx.Frame):
         self.current_path = path
 
         if path is None:
+            self.inRoot = True
             self.items = list(get_folders(self.path))
         else:
+            self.inRoot = False
             self.items = list(get_videos(path))
 
         for item in self.items:
@@ -83,10 +87,22 @@ class MainWindow(wx.Frame):
             self.rowCount += 1
 
         if path is None:
-            self.SetStatusText( str(self.rowCount) + " TV shows found")
+            self.SetStatusText( str(self.rowCount) + " shows found")
         else:
             self.SetStatusText( str(self.rowCount) + " episodes found")
 
+    def Activate(self):
+        current_dir = self.items[self.selected_row]
+
+        full_dir = os.path.join(self.path, current_dir)
+
+        if os.path.isdir(full_dir):
+            self.Populate(full_dir)
+        else:
+            self.PlayVideo()
+
+    def BrowseTo(self):
+       pass 
 
     def PlayVideo(self):
         title = self.items[self.selected_row]
@@ -101,14 +117,7 @@ class MainWindow(wx.Frame):
     def OnResultGridKeyDown(self, event):
         keycode = event.GetKeyCode()
         if keycode == wx.WXK_RETURN or keycode == wx.WXK_NUMPAD_ENTER or keycode == wx.WXK_RIGHT:
-            current_dir = self.items[self.selected_row]
-
-            full_dir = os.path.join(self.path, current_dir)
-
-            if os.path.isdir(full_dir):
-                self.Populate(full_dir)
-            else:
-                self.PlayVideo()
+            self.Activate()
 
         elif keycode == wx.WXK_BACK:
             self.Populate()
@@ -118,17 +127,25 @@ class MainWindow(wx.Frame):
 
         event.Skip()
 
+    def StarItem(self):
+        print "Starring item (TODO)"
+
+    def MarkItemWatched(self):
+        print "Marking item as watched (TODO)"
+
     def OnResultGridChar(self, event):
         keycode = event.GetKeyCode()
-        if keycode == 105: # i key
-            row = self.results[self.selected_row]
-            title = row[0]
-            search_string = title.replace(" ", "%20")
-            url = "http://www.imdb.com/find?q=%s" % search_string
-            print "i was pressed, opening %s" % url
-            webbrowser.open(url, 2, True)
+
+        if keycode in [ord("s"), ord("S")]:
+            self.StarItem()
+
+        elif keycode in [ord("w"), ord("W")]:
+            self.MarkItemWatched()
+
         event.Skip()
 
+    def OnResultGridDoubleClick(self, event):
+        self.Activate()
 
     def OnResultGridSelectCell(self, event):
         print "Selected Row:", event.GetRow()
