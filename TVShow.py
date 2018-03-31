@@ -167,7 +167,7 @@ class TVShow:
 
     def update_db(self, db):
 
-        rows = db.select("SELECT * FROM tv_shows WHERE directory = ?", self.directory)
+        rows = db.select("SELECT * FROM tv_shows WHERE directory = ?", [self.directory])
         
         if len(rows) == 0:
             self.log.debug("Inserting show %s" % title)
