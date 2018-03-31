@@ -30,7 +30,8 @@ def get_files(path, exts):
     items = []
     # Ensure the directory will list its contents (directories with colons in the name don't)
     try:
-        for item in os.listdir(path):
+        #for item in os.listdir(path):
+        for item in get_all_files(path):
             if ends_with_any(item, exts):
                 full = os.path.join(path, item)
                 items.append(full)
@@ -40,24 +41,24 @@ def get_files(path, exts):
 
 
 
-def get_movie_width(movie):
+def get_video_width(video):
 
-    return subprocess.check_output(["mediainfo", "--Inform=Video;\"%Width%\"", "%s" % movie])
+    return subprocess.check_output(["mediainfo", "--Inform=Video;\"%Width%\"", "%s" % video])
 
 
 
-def get_movie_res(movie):
+def get_video_res(video):
 
     tries = 2
     for i in range(tries):
-        w = get_movie_width(movie)
+        w = get_video_width(video)
         try:
             w = int(w)
             break
         except:
             pass
     else:
-        warn("WARNING: for movie %s, mediainfo width not int: '%s' -" % (movie.title, w.strip()))
+        warn("WARNING: for video %s, mediainfo width not int: '%s' -" % (video, w.strip()))
         return "?"
 
     if w <= 960:

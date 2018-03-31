@@ -1,0 +1,85 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
+import time
+import sys
+
+from Utilities import *
+from Log import Log
+from Database import Database
+from TVShow import TVShow
+from Progress import Progress
+
+# TODO SOONER
+
+# Remove anything in the index where the file no longer exists on disk.
+
+# Rather than being dumb like most other programs, hold the list of files to remove in RAM. If the number changes by more than some threshold (5% is a good start), then it's likely the movie folder has been renamed or some other user-error. Give the user chance to back out without changes in that instance.
+
+
+# TODO Indexer class
+
+
+def main():
+
+    data_root = '/mnt/media/Movies/'
+    tv_root = '/mnt/media/TV/'
+
+    db = Database(data_root)
+    log = Log(data_root)
+    progress = Progress(log)
+
+    tv_show_list = []
+
+    subdirs = get_subdirs(tv_root)
+    subdir_count = len(subdirs)
+
+    deleting = "-d" in sys.argv[1:]
+
+    log.status("%d subdirs found in tv directory" % subdir_count)
+
+    for subdir in subdirs:
+        s = TVShow(subdir, log) # Load up info from folder name into list of TV shows
+
+        if s.is_in_db(db) and s.is_up_to_date(db):
+            s.read_from_db(db)
+
+        else: # Haven't seen it before, or if we have, it's out of date
+            # get fresh info
+            s.read_from_disk()
+
+            # and store it for next time
+            s.update_db(db)
+
+        tv_show_list.append(s)
+
+        progress.update_log(len(tv_show_list), len(subdirs))
+
+    # Removing db stuff that doesn't exist on disk any more..
+
+    #missing_count = 0
+    #for filenames in db.get_movie_filenames(): # Check for missing files
+    #    filenames = filenames[0]
+    #    file_list = filenames.split(";")
+    #    for f in file_list:
+    #        any_missing = False
+    #        if not os.path.isfile(f):
+    #            any_missing = True
+    #        if any_missing:
+    #            log.warn("Files were missing from set: %s" % filenames)
+    #            if deleting:
+    #                log.warn("DELETING from db")
+    #                db.exec_sql("DELETE FROM movies WHERE filenames = ?", [filenames])
+    #                break 
+    #            missing_count += 1
+    #if deleting:
+    #     pass
+    #elif missing_count > 0:
+    #    print "%d movies had missing files. Run the program again with the -d option to delete these" % missing_count
+
+    progress.final_log()
+    print
+
+if __name__ == '__main__':
+    main()
+ 

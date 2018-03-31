@@ -163,7 +163,7 @@ class Movie:
 
         #self.resolution = "?"
         filename = os.path.join(self.directory, self.movie_files[0])
-        self.resolution = get_movie_res(filename)
+        self.resolution = get_video_res(filename)
 
         runtime = root.find('runtime')
         if runtime is not None:

@@ -1,0 +1,11 @@
+
+DATA TODO:
+finish indexer (doesn't store episodes)
+
+
+GUI TODO:
+
+remember which show was selected - selected_row is a bit messy..
+
+left justify grid column titles?
+
