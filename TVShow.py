@@ -173,7 +173,7 @@ class TVShow:
             if len(rows) == 0:
                 db.exec_sql("INSERT INTO tv_episodes(directory, filename, season, " + \
                             "episode, resolution, filesize, runtime, file_date, " + \
-                            "file_bytes, watched) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", \
+                            "file_bytes, watched) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", \
                             [self.directory, e.filename, e.season, e.episode, \
                             e.resolution, e.filesize, e.runtime, e.file_date, \
                             e.file_bytes, False])
