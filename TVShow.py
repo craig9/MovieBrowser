@@ -177,5 +177,5 @@ class TVShow:
                 e.filesize, e.runtime, e.file_date, e.file_bytes, self.directory, \
                 e.filename])
 
-            self.log.debug ("Updating %s - %s" % (self.directory, self.filename))
+            self.log.debug ("Updating %s - %s" % (self.directory, e.filename))
 
