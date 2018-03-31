@@ -58,7 +58,7 @@ def get_video_res(video):
         except:
             pass
     else:
-        warn("WARNING: for video %s, mediainfo width not int: '%s' -" % (video, w.strip()))
+        print("WARNING: for video %s, mediainfo width not int: '%s' -" % (video, w.strip()))
         return "?"
 
     if w <= 960:

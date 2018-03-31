@@ -167,15 +167,27 @@ class TVShow:
 
     def update_db(self, db):
         for e in self.episodes:
-            # TODO If not exists, insert it..
-        
-            # TODO Else:
-            db.exec_sql("UPDATE tv_episodes SET season = ?, episode = ?, " + \
-                "watched = ?, resolution = ?, filesize = ?, runtime = ?, " + \
-                "file_date = ?, file_bytes = ? WHERE directory = ? AND " + \
-                "filename = ?", [e.season, e.episode, e.watched, e.resolution, \
-                e.filesize, e.runtime, e.file_date, e.file_bytes, self.directory, \
-                e.filename])
+            rows = db.select("SELECT * FROM tv_episodes WHERE directory = ? " + \
+                            "AND filename = ?", [self.directory, e.filename])
 
-            self.log.debug ("Updating %s - %s" % (self.directory, e.filename))
+            if len(rows) == 0:
+                db.exec_sql("INSERT INTO tv_episodes(directory, filename, season, " + \
+                            "episode, resolution, filesize, runtime, file_date, " + \
+                            "file_bytes, watched) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", \
+                            [self.directory, e.filename, e.season, e.episode, \
+                            e.resolution, e.filesize, e.runtime, e.file_date, \
+                            e.file_bytes, False])
+            elif len(rows) == 1:
+                # Purposely don't update 'watched' status
+                db.exec_sql("UPDATE tv_episodes SET season = ?, episode = ?, " + \
+                    "resolution = ?, filesize = ?, runtime = ?, " + \
+                    "file_date = ?, file_bytes = ? WHERE directory = ? AND " + \
+                    "filename = ?", [e.season, e.episode, e.resolution, \
+                    e.filesize, e.runtime, e.file_date, e.file_bytes, self.directory, \
+                    e.filename])
+            else:
+                self.log.error("More than 1 copy of %s %s existed in db" % [self.directory, e.filename])
+        
+
+            self.log.debug ("Updating db: %s - %s" % (self.directory, e.filename))
 
