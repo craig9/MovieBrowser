@@ -142,8 +142,8 @@ class TVShow:
             title = match.group(1)
             year = match.group(2)
         else:
-            self.log.error("Could not determine title and year in '%s'" % self.directory)
-            title = self.directory
+            self.log.error("Could not determine title and year in '%s'" % last_segment)
+            title = last_segment
             year = "0"
 
         self.title = title
@@ -166,6 +166,15 @@ class TVShow:
 
 
     def update_db(self, db):
+
+        rows = db.select("SELECT * FROM tv_shows WHERE directory = ?", self.directory)
+        
+        if len(rows) == 0:
+            self.log.debug("Inserting show %s" % title)
+            db.exec_sql("INSERT INTO tv_shows (directory, title, year, " + \
+                        "starred) VALUES (?, ?, ?, ?)" % (self.directory, \
+                        self.title, self.year, self.starred))
+
         for e in self.episodes:
             rows = db.select("SELECT * FROM tv_episodes WHERE directory = ? " + \
                             "AND filename = ?", [self.directory, e.filename])
