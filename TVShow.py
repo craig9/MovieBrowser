@@ -172,8 +172,8 @@ class TVShow:
         if len(rows) == 0:
             self.log.debug("Inserting show %s" % self.title)
             db.exec_sql("INSERT INTO tv_shows (directory, title, year, " + \
-                        "starred) VALUES (?, ?, ?, ?)" % (self.directory, \
-                        self.title, self.year, self.starred))
+                        "starred) VALUES (?, ?, ?, ?)", [self.directory, \
+                        self.title, self.year, self.starred])
 
         for e in self.episodes:
             rows = db.select("SELECT * FROM tv_episodes WHERE directory = ? " + \
