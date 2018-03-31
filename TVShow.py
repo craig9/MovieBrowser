@@ -36,7 +36,7 @@ class TVShow:
         self.log.debug("Scanning directory '%s' for TV episodes" % self.directory)
         
         for f in get_files(self.directory, video_exts):
-            self.episodes.append(TVEpisode(f, self.log))
+            self.episodes.append(TVEpisode(f))
 
         self.log.debug("Found %d episodes" % len(self.episodes))
 
@@ -84,7 +84,7 @@ class TVShow:
             rows = db.select(sql, [episode.filename])
 
             if len(rows) != 1:
-                self.log.warn("Found %d table rows for episode %s" % (len(rows), episode.filename))
+                self.log.debug("Checking if up to date. Found %d table rows for episode %s" % (len(rows), episode.filename))
                 up_to_date = False
             else:
                 row = rows[0]
@@ -114,17 +114,14 @@ class TVShow:
         self.starred = row['starred'] 
 
         for episode in self.episodes:
-            e_row = db.select("SELECT filename, season, episode, watched, " + \
-                            "resolution, filesize, runtime, file_date, file_bytes " + \
+            e_row = db.select("SELECT filename, title, watched, " + \
+                            "resolution, file_date, file_bytes " + \
                             "FROM tv_episodes WHERE directory = ? AND filename = ?", \
-                            [self.directory, self.filename])[0]
+                            [self.directory, episode.filename])[0]
 
-            episode.season = e_row['season']
-            episode.episode = e_row['episode']
+            episode.title = e_row['title']
             episode.watched = e_row['watched']
             episode.resolution = e_row['resolution']
-            episode.filesize = e_row['filesize']
-            episode.runtime = e_row['runtime']
             episode.file_date = e_row['file_date']
             episode.file_bytes = e_row['file_bytes']
 
@@ -152,15 +149,11 @@ class TVShow:
 
         for e in self.episodes:
             self.log.debug("Reading episode from disk: %s" % e.filename)
-            # TODO work out season and episode from filename
-            e.season = '?'
-            e.episode = '?'
+            short_filename = os.path.split(e.filename)[-1]
+            e.title = short_filename.rsplit('.', 1)[0]
             e.watched = False
-            e.resolution = get_video_res(e.filename)
-            # TODO do we need filesize and file_bytes?
-            e.filesize = '?'
-            # TODO work out this with mediainfo
-            e.runtime = '?'
+            #e.resolution = get_video_res(e.filename)
+            e.resolution = '?'
             e.file_date = os.stat(e.filename).st_mtime
             e.file_bytes = os.stat(e.filename).st_size
 
@@ -180,23 +173,22 @@ class TVShow:
                             "AND filename = ?", [self.directory, e.filename])
 
             if len(rows) == 0:
-                db.exec_sql("INSERT INTO tv_episodes(directory, filename, season, " + \
-                            "episode, resolution, filesize, runtime, file_date, " + \
-                            "file_bytes, watched) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", \
-                            [self.directory, e.filename, e.season, e.episode, \
-                            e.resolution, e.filesize, e.runtime, e.file_date, \
-                            e.file_bytes, False])
+                db.exec_sql("INSERT INTO tv_episodes(directory, filename, title, " + \
+                            "resolution, file_date, file_bytes, watched) VALUES " + \
+                            "(?, ?, ?, ?, ?, ?, ?)", \
+                            [self.directory, e.filename, e.title, \
+                            e.resolution, e.file_date, e.file_bytes, False])
             elif len(rows) == 1:
                 # Purposely don't update 'watched' status
-                db.exec_sql("UPDATE tv_episodes SET season = ?, episode = ?, " + \
-                    "resolution = ?, filesize = ?, runtime = ?, " + \
+                db.exec_sql("UPDATE tv_episodes SET title = ?, " + \
+                    "resolution = ?, " + \
                     "file_date = ?, file_bytes = ? WHERE directory = ? AND " + \
-                    "filename = ?", [e.season, e.episode, e.resolution, \
-                    e.filesize, e.runtime, e.file_date, e.file_bytes, self.directory, \
-                    e.filename])
+                    "filename = ?", [e.title, e.resolution, e.file_date, \
+                    e.file_bytes, self.directory, e.filename])
             else:
                 self.log.error("More than 1 copy of %s %s existed in db" % [self.directory, e.filename])
         
 
             self.log.debug ("Updating db: %s - %s" % (self.directory, e.filename))
+
 

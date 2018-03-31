@@ -6,6 +6,7 @@ import sys
 import wx, wx.grid
 import webbrowser
 from Utilities import get_folders, get_videos
+from Database import Database
 
 class MainWindow(wx.Frame):
     def __init__(self, parent, title):
@@ -15,17 +16,21 @@ class MainWindow(wx.Frame):
         self.SetIcon(self.icon)
 
         self.resultGrid = wx.grid.Grid(self)
-        
         self.resultGrid.CreateGrid(0, 3)
-        self.resultGrid.SetColSize(0, 50) # star
-        self.resultGrid.SetColSize(1, 650) # title
-        self.resultGrid.SetColSize(2, 80) # watched
+
+        self.SetupShowsGrid()
+
+        #self.resultGrid.SetColSize(0, 50) # star
+        #self.resultGrid.SetColSize(1, 650) # title
+        #self.resultGrid.SetColSize(2, 80) # year
+        #self.resultGrid.SetColSize(3, 50) # watched
+
+        #self.resultGrid.SetColLabelValue(0, "Star")
+        #self.resultGrid.SetColLabelValue(1, "Title")
+        #self.resultGrid.SetColLabelValue(2, "Year")
+        #self.resultGrid.SetColLabelValue(3, "Watched")
 
         self.resultGrid.HideRowLabels()
-        self.resultGrid.SetColLabelValue(0, "Star")
-        self.resultGrid.SetColLabelValue(1, "Title")
-        self.resultGrid.SetColLabelValue(2, "Watched")
-
         self.resultGrid.EnableEditing(False)
         self.resultGrid.SetSelectionMode(wx.grid.Grid.wxGridSelectRows)
         self.resultGrid.SetCellHighlightPenWidth(0)
@@ -38,6 +43,7 @@ class MainWindow(wx.Frame):
         self.resultGrid.Bind(wx.EVT_CHAR, self.OnResultGridChar)
         self.resultGrid.Bind(wx.grid.EVT_GRID_SELECT_CELL, self.OnResultGridSelectCell)
         self.resultGrid.Bind(wx.grid.EVT_GRID_CELL_LEFT_DCLICK, self.OnResultGridDoubleClick)
+        self.resultGrid.Bind(wx.EVT_SIZE, self.OnSize)
 
         self.sizer = wx.BoxSizer(wx.VERTICAL)
         self.sizer.Add(self.resultGrid, 0, wx.EXPAND)
@@ -49,55 +55,163 @@ class MainWindow(wx.Frame):
 
         self.SetSizer(self.sizer)
 
+        self.db = Database('/mnt/media/Movies')
+
         self.inRoot = True
+        self.selected_show = 0
+        self.selected_episode = 0
         self.Populate()
 
         self.Maximize(True)
         self.Show(True)
         self.resultGrid.SetFocus()
 
-    def Populate(self, path=None):
 
+    def OnSize(self, event):
+        self.resultGrid.SetSize(self.GetClientSize())
+        event.Skip()
+
+    def Empty(self):
         self.resultGrid.Scroll(0, 0)
         while self.rowCount > 0:
             self.resultGrid.DeleteRows(self.rowCount-1, 1)
             self.rowCount -= 1
 
+
+
+    def SetupShowsGrid(self):
+        g = self.resultGrid
+        g.DeleteCols(0, g.GetNumberCols())
+        g.AppendCols(4)
+
+        g.SetColLabelValue(0, "Starred")
+        g.SetColSize(0, 80)
+
+        g.SetColLabelValue(1, "Title")
+        g.SetColSize(1, 690)
+
+        g.SetColLabelValue(2, "Year")
+        g.SetColSize(2, 80)
+
+        g.SetColLabelValue(3, "Watched")
+        g.SetColSize(3, 80)
+
+
+
+    def SetupEpisodesGrid(self):
+
+        g = self.resultGrid
+        g.DeleteCols(0, g.GetNumberCols())
+        g.AppendCols(4) # title, resolution, size, watched
+
+        g.SetColLabelValue(0, "Title")
+        g.SetColSize(0, 770)
+
+        g.SetColLabelValue(1, "Resolution")
+        g.SetColSize(1, 0)
+
+        g.SetColLabelValue(2, "Size")
+        g.SetColSize(2, 80)
+
+        g.SetColLabelValue(3, "Watched")
+        g.SetColSize(3, 80)
+
+
+
+    def Populate(self, path=None):
+
+        selected_show = self.selected_show
+        selected_episode = self.selected_episode
+
+        self.Empty()
         self.current_path = path
 
         if path is None:
+
             self.inRoot = True
-            self.items = list(get_folders(self.path))
-        else:
-            self.inRoot = False
-            self.items = list(get_videos(path))
+            #self.tv_shows = self.db.select("SELECT directory, title, year, starred FROM tv_shows ORDER BY title");
+            self.tv_shows = self.db.select("SELECT directory, title, year, starred FROM tv_shows ORDER BY starred, title");
 
-        for item in self.items:
-            
-            item = os.path.split(item)[-1]
+            self.SetupShowsGrid()
 
-            self.resultGrid.AppendRows(1)
-            try:
-                self.resultGrid.SetCellValue(self.rowCount, 0, str(''))
-                self.resultGrid.SetCellValue(self.rowCount, 1, str(item))
-                self.resultGrid.SetCellValue(self.rowCount, 2, str(''))
-            except:
-                print("Error")
-                sys.exit(-1)
-            self.rowCount += 1
+            g = self.resultGrid
+            for s in self.tv_shows:
+                self.resultGrid.AppendRows(1)
 
-        if path is None:
+                starred = 'Yes' if s['starred'] else 'No'
+                yellow = (252, 233, 79)
+                grey = (211, 215, 207)
+                white = (255, 255, 255)
+                color = yellow if s['starred'] else white
+                g.SetCellValue(self.rowCount, 0, starred)
+                g.SetCellBackgroundColour(self.rowCount, 0, color)
+                g.SetCellAlignment(self.rowCount, 0, wx.ALIGN_CENTRE, wx.ALIGN_CENTRE)
+
+                g.SetCellValue(self.rowCount, 1, str(s['title']))
+
+                g.SetCellValue(self.rowCount, 2, str(s['year']))
+                g.SetCellAlignment(self.rowCount, 2, wx.ALIGN_CENTRE, wx.ALIGN_CENTRE)
+
+                unwatched_sql = "SELECT COUNT(1) FROM tv_episodes WHERE watched = 0 AND directory = ?"
+                rows = self.db.select(unwatched_sql, [s['directory']])
+                unwatched_episodes = rows[0][0]
+                print "Checking unwatched episodes for %s: %d found" % (s['title'], unwatched_episodes)
+                watched = 'Yes' if unwatched_episodes == 0 else 'No'
+                color = grey if unwatched_episodes == 0 else white
+                g.SetCellValue(self.rowCount, 3, watched)
+                g.SetCellBackgroundColour(self.rowCount, 3, color)
+                g.SetCellAlignment(self.rowCount, 3, wx.ALIGN_CENTRE, wx.ALIGN_CENTRE)
+
+                self.rowCount += 1
+
             self.SetStatusText( str(self.rowCount) + " shows found")
-        else:
-            self.SetStatusText( str(self.rowCount) + " episodes found")
+
+            self.selected_show = selected_show
+            self.resultGrid.SetGridCursor(selected_show, 0)
+
+        else: # episodes
+
+            self.inRoot = False
+            sql = "SELECT directory, filename, title, watched, " + \
+                "resolution, file_date, file_bytes FROM " + \
+                "tv_episodes WHERE directory = ?"
+            print "Path is '%s'" % path
+            self.tv_episodes = self.db.select(sql, [path]);
+
+            self.SetupEpisodesGrid()
+
+            g = self.resultGrid
+            first_unwatched = 0
+            for s in self.tv_episodes:
+                self.resultGrid.AppendRows(1)
+                g.SetCellValue(self.rowCount, 0, str(s['title']))
+
+                g.SetCellValue(self.rowCount, 1, str(s['resolution']))
+                g.SetCellAlignment(self.rowCount, 1, wx.ALIGN_CENTRE, wx.ALIGN_CENTRE)
+
+                megs = str(int(s['file_bytes']) / 2**20)
+                g.SetCellValue(self.rowCount, 2, megs + ' MB')
+                g.SetCellAlignment(self.rowCount, 2, wx.ALIGN_CENTRE, wx.ALIGN_CENTRE)
+
+                grey = (211, 215, 207)
+                white = (255, 255, 255)
+                watched = 'Yes' if s['watched'] else 'No'
+                color = grey if s['watched'] else white
+                if not s['watched'] and selected_episode == None:
+                    selected_episode = self.rowCount
+                g.SetCellValue(self.rowCount, 3, watched)
+                g.SetCellBackgroundColour(self.rowCount, 3, color)
+                g.SetCellAlignment(self.rowCount, 3, wx.ALIGN_CENTRE, wx.ALIGN_CENTRE)
+                self.rowCount += 1
+
+            self.SetStatusText( str(self.rowCount) + " shows found")
+            self.selected_episode = selected_episode
+            self.resultGrid.SetGridCursor(selected_episode, 0)
+
 
     def Activate(self):
-        current_dir = self.items[self.selected_row]
-
-        full_dir = os.path.join(self.path, current_dir)
-
-        if os.path.isdir(full_dir):
-            self.Populate(full_dir)
+        if self.inRoot:
+            self.Populate(self.tv_shows[self.selected_show]['directory'])
         else:
             self.PlayVideo()
 
@@ -105,10 +219,11 @@ class MainWindow(wx.Frame):
        pass 
 
     def PlayVideo(self):
-        title = self.items[self.selected_row]
-        filename = os.path.join(self.current_path, title)
+        episode = self.tv_episodes[self.selected_episode]
+        filename = episode['filename']
+        #filename = os.path.join(self.current_path, title)
 
-        print "Playing", title
+        print "Playing", episode['title']
         cmd = "vlc --fullscreen --no-repeat --no-loop --play-and-exit --no-video-title-show \"" + filename + "\""
         print cmd
 
@@ -128,10 +243,39 @@ class MainWindow(wx.Frame):
         event.Skip()
 
     def StarItem(self):
-        print "Starring item (TODO)"
+        if not self.inRoot: return
+
+        show = self.tv_shows[self.selected_show]
+        print "Starring/unstarring show: %s" % show['title']
+        self.db.exec_sql("UPDATE tv_shows SET starred = ~starred WHERE directory = ?", [show['directory']])
+        self.Populate()
 
     def MarkItemWatched(self):
-        print "Marking item as watched (TODO)"
+        if self.inRoot:
+            # Entire show
+            show = self.tv_shows[self.selected_show]
+            print "Marking entire show as watched/unwatched: %s" % show['title']
+
+            unwatched_sql = "SELECT COUNT(1) FROM tv_episodes WHERE watched = 0 AND directory = ?"
+            rows = self.db.select(unwatched_sql, [show['directory']])
+            unwatched_episodes = rows[0][0]
+            watched = (unwatched_episodes == 0)
+
+            self.db.exec_sql("UPDATE tv_episodes SET watched = ? WHERE directory = ?", \
+                [not watched, show['directory']])
+            self.Populate()
+
+        else:
+            # Single episode
+            episode = self.tv_episodes[self.selected_episode]
+            print "Marking episode watched/unwatched: %s" % episode['title']
+            if episode['watched']:
+                newval = 0
+            else:
+                newval = 1
+            self.db.exec_sql("UPDATE tv_episodes SET watched = ? WHERE directory = ? AND filename = ?", \
+                [newval, episode['directory'], episode['filename']])
+            self.Populate(episode['directory'])
 
     def OnResultGridChar(self, event):
         keycode = event.GetKeyCode()
@@ -144,13 +288,27 @@ class MainWindow(wx.Frame):
 
         event.Skip()
 
+
+
     def OnResultGridDoubleClick(self, event):
         self.Activate()
+        event.Skip()
+
+
 
     def OnResultGridSelectCell(self, event):
-        print "Selected Row:", event.GetRow()
-        self.selected_row = event.GetRow()
+        if self.inRoot:
+            self.selected_show = event.GetRow()
+            self.selected_episode = None
+            print "Selected show: %d" % self.selected_show
+        else:
+            self.selected_episode = event.GetRow()
+            print "Selected episode: %d" % self.selected_episode
+
         self.resultGrid.SelectRow(event.GetRow())
+        event.Skip()
+
+
 
 app = wx.App(False)  # Don't redirect stdout/stderr to a window.
 frame = MainWindow(None, "TV Browser")

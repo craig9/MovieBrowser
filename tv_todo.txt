@@ -1,6 +1,5 @@
 
 DATA TODO:
-finish indexer (doesn't store episodes)
 
 
 GUI TODO:
