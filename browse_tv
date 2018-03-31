@@ -20,16 +20,6 @@ class MainWindow(wx.Frame):
 
         self.SetupShowsGrid()
 
-        #self.resultGrid.SetColSize(0, 50) # star
-        #self.resultGrid.SetColSize(1, 650) # title
-        #self.resultGrid.SetColSize(2, 80) # year
-        #self.resultGrid.SetColSize(3, 50) # watched
-
-        #self.resultGrid.SetColLabelValue(0, "Star")
-        #self.resultGrid.SetColLabelValue(1, "Title")
-        #self.resultGrid.SetColLabelValue(2, "Year")
-        #self.resultGrid.SetColLabelValue(3, "Watched")
-
         self.resultGrid.HideRowLabels()
         self.resultGrid.EnableEditing(False)
         self.resultGrid.SetSelectionMode(wx.grid.Grid.wxGridSelectRows)
@@ -50,9 +40,6 @@ class MainWindow(wx.Frame):
 
         self.CreateStatusBar()
 
-        self.path = '/mnt/media/TV'
-        self.root_folders = None
-
         self.SetSizer(self.sizer)
 
         self.db = Database('/mnt/media/Movies')
@@ -67,9 +54,12 @@ class MainWindow(wx.Frame):
         self.resultGrid.SetFocus()
 
 
+
     def OnSize(self, event):
         self.resultGrid.SetSize(self.GetClientSize())
         event.Skip()
+
+
 
     def Empty(self):
         self.resultGrid.Scroll(0, 0)
@@ -85,16 +75,16 @@ class MainWindow(wx.Frame):
         g.AppendCols(4)
 
         g.SetColLabelValue(0, "Starred")
-        g.SetColSize(0, 80)
+        g.SetColSize(0, 100)
 
         g.SetColLabelValue(1, "Title")
-        g.SetColSize(1, 690)
+        g.SetColSize(1, 650)
 
         g.SetColLabelValue(2, "Year")
         g.SetColSize(2, 80)
 
         g.SetColLabelValue(3, "Watched")
-        g.SetColSize(3, 80)
+        g.SetColSize(3, 100)
 
 
 
@@ -105,16 +95,16 @@ class MainWindow(wx.Frame):
         g.AppendCols(4) # title, resolution, size, watched
 
         g.SetColLabelValue(0, "Title")
-        g.SetColSize(0, 770)
+        g.SetColSize(0, 730)
 
         g.SetColLabelValue(1, "Resolution")
         g.SetColSize(1, 0)
 
         g.SetColLabelValue(2, "Size")
-        g.SetColSize(2, 80)
+        g.SetColSize(2, 100)
 
         g.SetColLabelValue(3, "Watched")
-        g.SetColSize(3, 80)
+        g.SetColSize(3, 100)
 
 
 
@@ -124,13 +114,12 @@ class MainWindow(wx.Frame):
         selected_episode = self.selected_episode
 
         self.Empty()
-        self.current_path = path
 
         if path is None:
 
             self.inRoot = True
-            #self.tv_shows = self.db.select("SELECT directory, title, year, starred FROM tv_shows ORDER BY title");
-            self.tv_shows = self.db.select("SELECT directory, title, year, starred FROM tv_shows ORDER BY starred, title");
+
+            self.tv_shows = self.db.select("SELECT directory, title, year, starred FROM tv_shows ORDER BY starred, title")
 
             self.SetupShowsGrid()
 
@@ -152,22 +141,24 @@ class MainWindow(wx.Frame):
                 g.SetCellValue(self.rowCount, 2, str(s['year']))
                 g.SetCellAlignment(self.rowCount, 2, wx.ALIGN_CENTRE, wx.ALIGN_CENTRE)
 
+                # TODO cache these values
                 unwatched_sql = "SELECT COUNT(1) FROM tv_episodes WHERE watched = 0 AND directory = ?"
                 rows = self.db.select(unwatched_sql, [s['directory']])
                 unwatched_episodes = rows[0][0]
-                print "Checking unwatched episodes for %s: %d found" % (s['title'], unwatched_episodes)
                 watched = 'Yes' if unwatched_episodes == 0 else 'No'
                 color = grey if unwatched_episodes == 0 else white
                 g.SetCellValue(self.rowCount, 3, watched)
                 g.SetCellBackgroundColour(self.rowCount, 3, color)
                 g.SetCellAlignment(self.rowCount, 3, wx.ALIGN_CENTRE, wx.ALIGN_CENTRE)
 
+                # TODO show episode count?
+
                 self.rowCount += 1
 
             self.SetStatusText( str(self.rowCount) + " shows found")
 
             self.selected_show = selected_show
-            self.resultGrid.SetGridCursor(selected_show, 0)
+            g.GoToCell(selected_show, 0)
 
         else: # episodes
 
@@ -175,13 +166,12 @@ class MainWindow(wx.Frame):
             sql = "SELECT directory, filename, title, watched, " + \
                 "resolution, file_date, file_bytes FROM " + \
                 "tv_episodes WHERE directory = ?"
-            print "Path is '%s'" % path
             self.tv_episodes = self.db.select(sql, [path]);
 
             self.SetupEpisodesGrid()
 
             g = self.resultGrid
-            first_unwatched = 0
+
             for s in self.tv_episodes:
                 self.resultGrid.AppendRows(1)
                 g.SetCellValue(self.rowCount, 0, str(s['title']))
@@ -205,8 +195,11 @@ class MainWindow(wx.Frame):
                 self.rowCount += 1
 
             self.SetStatusText( str(self.rowCount) + " shows found")
+            if selected_episode is None:
+                selected_episode = 0
             self.selected_episode = selected_episode
-            self.resultGrid.SetGridCursor(selected_episode, 0)
+            g.GoToCell(selected_episode, 0)
+
 
 
     def Activate(self):
@@ -215,13 +208,11 @@ class MainWindow(wx.Frame):
         else:
             self.PlayVideo()
 
-    def BrowseTo(self):
-       pass 
+
 
     def PlayVideo(self):
         episode = self.tv_episodes[self.selected_episode]
         filename = episode['filename']
-        #filename = os.path.join(self.current_path, title)
 
         print "Playing", episode['title']
         cmd = "vlc --fullscreen --no-repeat --no-loop --play-and-exit --no-video-title-show \"" + filename + "\""
@@ -229,18 +220,39 @@ class MainWindow(wx.Frame):
 
         os.system(cmd)
 
+
+
     def OnResultGridKeyDown(self, event):
         keycode = event.GetKeyCode()
+
         if keycode == wx.WXK_RETURN or keycode == wx.WXK_NUMPAD_ENTER or keycode == wx.WXK_RIGHT:
             self.Activate()
 
-        elif keycode == wx.WXK_BACK:
+        elif keycode == wx.WXK_BACK or keycode == wx.WXK_LEFT:
             self.Populate()
 
-        elif keycode == wx.WXK_LEFT:
-            self.Populate()
+        elif keycode == wx.WXK_UP:
+            if self.inRoot and self.selected_show == 0: 
+                return
+            else:
+                event.Skip()
 
-        event.Skip()
+        elif keycode == wx.WXK_DOWN:
+            if self.inRoot and self.selected_show == self.rowCount - 1:
+                return
+            else:
+                event.Skip()
+
+        elif keycode == wx.WXK_HOME:
+            self.resultGrid.GoToCell(0, 0)
+
+        elif keycode == wx.WXK_END:
+            self.resultGrid.GoToCell(self.rowCount - 1, 0)
+
+        else:
+            event.Skip()
+
+
 
     def StarItem(self):
         if not self.inRoot: return
@@ -277,6 +289,8 @@ class MainWindow(wx.Frame):
                 [newval, episode['directory'], episode['filename']])
             self.Populate(episode['directory'])
 
+
+
     def OnResultGridChar(self, event):
         keycode = event.GetKeyCode()
 
@@ -305,9 +319,9 @@ class MainWindow(wx.Frame):
             self.selected_episode = event.GetRow()
             print "Selected episode: %d" % self.selected_episode
 
+        
         self.resultGrid.SelectRow(event.GetRow())
         event.Skip()
-
 
 
 app = wx.App(False)  # Don't redirect stdout/stderr to a window.
