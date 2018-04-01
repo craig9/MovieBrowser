@@ -35,13 +35,19 @@ class Database:
             self.exec_sql("CREATE TABLE movies (filenames, nfo, title, year, rating, resolution, genres, filesize, runtime, nfo_date, nfo_bytes, movie_date, movie_bytes)")
 
     def create_tv_shows_table(self):
-        self.exec_sql("CREATE TABLE tv_shows (directory, title, year, starred)")
+        self.exec_sql("CREATE TABLE tv_shows (directory, title, year, starred, watched)")
 
     def create_tv_episodes_table(self):
         self.exec_sql("CREATE TABLE tv_episodes (directory, filename, title, watched, file_date, file_bytes)")
 
     def get_movie_filenames(self):
         return self.select("SELECT filenames FROM movies;"); 
+
+    def get_show_directories(self):
+        return self.select("SELECT directory FROM tv_shows;");
+    
+    def get_episode_filenames(self):
+        return self.select("SELECT filename FROM tv_episodes;");
 
     def exec_sql(self, sql, *args):
         self.cursor.execute(sql, *args)

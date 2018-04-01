@@ -34,48 +34,68 @@ def main():
     subdirs = get_subdirs(tv_root)
     subdir_count = len(subdirs)
 
+    checking = "-c" in sys.argv[1:]
     deleting = "-d" in sys.argv[1:]
 
     log.status("%d subdirs found in tv directory" % subdir_count)
 
-    for subdir in subdirs:
-        s = TVShow(subdir, log) # Load up info from folder name into list of TV shows
+    if not checking:
+        for subdir in subdirs:
+            s = TVShow(subdir, log) # Load up info from folder name into list of TV shows
 
-        if s.is_in_db(db) and s.is_up_to_date(db):
-            s.read_from_db(db)
+            if s.is_in_db(db) and s.is_up_to_date(db):
+                s.read_from_db(db)
 
-        else: # Haven't seen it before, or if we have, it's out of date
-            # get fresh info
-            s.read_from_disk()
+            else: # Haven't seen it before, or if we have, it's out of date
+                # get fresh info
+                s.read_from_disk()
 
-            # and store it for next time
-            s.update_db(db)
+                # and store it for next time
+                s.update_db(db)
 
-        tv_show_list.append(s)
+            tv_show_list.append(s)
 
-        progress.update_log(len(tv_show_list), len(subdirs))
+            progress.update_log(len(tv_show_list), len(subdirs))
 
-    # Removing db stuff that doesn't exist on disk any more..
+    # Removing TV shows that don't exist on disk any more..
 
-    #missing_count = 0
-    #for filenames in db.get_movie_filenames(): # Check for missing files
-    #    filenames = filenames[0]
-    #    file_list = filenames.split(";")
-    #    for f in file_list:
-    #        any_missing = False
-    #        if not os.path.isfile(f):
-    #            any_missing = True
-    #        if any_missing:
-    #            log.warn("Files were missing from set: %s" % filenames)
-    #            if deleting:
-    #                log.warn("DELETING from db")
-    #                db.exec_sql("DELETE FROM movies WHERE filenames = ?", [filenames])
-    #                break 
-    #            missing_count += 1
-    #if deleting:
-    #     pass
-    #elif missing_count > 0:
-    #    print "%d movies had missing files. Run the program again with the -d option to delete these" % missing_count
+    missing_count = 0
+    for row in db.get_show_directories(): # Check for missing files
+        directory = row['directory']
+        if not os.path.isdir(directory):
+            log.warn("Directory was missing on disk: %s" % directory)
+            if deleting:
+                log.warn("DELETING from db")
+                db.exec_sql("DELETE FROM tv_shows WHERE directory = ?", [directory])
+                db.exec_sql("DELETE FROM tv_episodes WHERE directory = ?", [directory])
+            missing_count += 1
+    if deleting:
+         pass
+    elif missing_count > 0:
+        print "%d TV shows had missing directories. Run the program again with the -d option to delete these" % missing_count
+    elif missing_count == 0:
+        print "No TV shows had missing directories"
+
+    # Removing TV episodes that don't exist on disk any more..
+
+    missing_count = 0
+    for row in db.get_episode_filenames(): # Check for missing files
+        filename = row['filename']
+        if not os.path.isfile(filename):
+            log.warn("File was missing on disk: %s" % filename)
+            if deleting:
+                log.warn("DELETING from db")
+                db.exec_sql("DELETE FROM tv_episodes WHERE filename = ?", [filename])
+            missing_count += 1
+    if deleting:
+         pass
+    elif missing_count > 0:
+        print "%d TV shows had missing episodes. Run the program again with the -d option to delete these" % missing_count
+    elif missing_count == 0:
+        print "No TV shows had missing episodes"
+
+    
+
 
     progress.final_log()
     print

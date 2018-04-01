@@ -139,9 +139,10 @@ class MainWindow(wx.Frame):
                 g.SetCellAlignment(self.rowCount, 2, wx.ALIGN_CENTRE, wx.ALIGN_CENTRE)
 
                 # TODO cache these values
-                unwatched_sql = "SELECT COUNT(1) FROM tv_episodes WHERE watched = 0 AND directory = ?"
-                rows = self.db.select(unwatched_sql, [s['directory']])
-                unwatched_episodes = rows[0][0]
+                #unwatched_sql = "SELECT COUNT(1) FROM tv_episodes WHERE watched = 0 AND directory = ?"
+                #rows = self.db.select(unwatched_sql, [s['directory']])
+                #unwatched_episodes = rows[0][0]
+                unwatched_episodes = 1
                 watched = 'Yes' if unwatched_episodes == 0 else 'No'
                 color = grey if unwatched_episodes == 0 else white
                 g.SetCellValue(self.rowCount, 3, watched)
@@ -152,7 +153,9 @@ class MainWindow(wx.Frame):
 
                 self.rowCount += 1
 
-            self.SetStatusText( str(self.rowCount) + " shows found")
+            episode_count = self.db.select("SELECT COUNT(1) FROM tv_episodes")[0][0]
+
+            self.SetStatusText("%d TV shows found (%d episodes)" % (self.rowCount, episode_count))
 
             self.selected_show = selected_show
             g.GoToCell(selected_show, 0)
@@ -162,7 +165,7 @@ class MainWindow(wx.Frame):
             self.inRoot = False
             sql = "SELECT directory, filename, title, watched, " + \
                 "file_date, file_bytes FROM " + \
-                "tv_episodes WHERE directory = ?"
+                "tv_episodes WHERE directory = ? ORDER BY title"
             self.tv_episodes = self.db.select(sql, [path]);
 
             self.SetupEpisodesGrid()

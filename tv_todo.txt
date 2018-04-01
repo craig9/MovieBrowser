@@ -1,10 +1,19 @@
-
 DATA TODO:
+
+Add watched column to tv_shows
+
+
+
+INDEX TODO:
+
+Update tv_shows watched total, when out of date
+Remove tv_shows from database (when the -d flag is used)
 
 
 GUI TODO:
 
-remember which show was selected - selected_row is a bit messy..
+Update tv_show watched when anything changes
+Use stored tv_show watched flag for performance
+Show starred and unwatched at the top, everything else below
 
-left justify grid column titles?
 
