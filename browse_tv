@@ -92,19 +92,16 @@ class MainWindow(wx.Frame):
 
         g = self.resultGrid
         g.DeleteCols(0, g.GetNumberCols())
-        g.AppendCols(4) # title, resolution, size, watched
+        g.AppendCols(3)
 
         g.SetColLabelValue(0, "Title")
         g.SetColSize(0, 730)
 
-        g.SetColLabelValue(1, "Resolution")
-        g.SetColSize(1, 0)
+        g.SetColLabelValue(1, "Size")
+        g.SetColSize(1, 100)
 
-        g.SetColLabelValue(2, "Size")
+        g.SetColLabelValue(2, "Watched")
         g.SetColSize(2, 100)
-
-        g.SetColLabelValue(3, "Watched")
-        g.SetColSize(3, 100)
 
 
 
@@ -164,7 +161,7 @@ class MainWindow(wx.Frame):
 
             self.inRoot = False
             sql = "SELECT directory, filename, title, watched, " + \
-                "resolution, file_date, file_bytes FROM " + \
+                "file_date, file_bytes FROM " + \
                 "tv_episodes WHERE directory = ?"
             self.tv_episodes = self.db.select(sql, [path]);
 
@@ -176,12 +173,9 @@ class MainWindow(wx.Frame):
                 self.resultGrid.AppendRows(1)
                 g.SetCellValue(self.rowCount, 0, str(s['title']))
 
-                g.SetCellValue(self.rowCount, 1, str(s['resolution']))
-                g.SetCellAlignment(self.rowCount, 1, wx.ALIGN_CENTRE, wx.ALIGN_CENTRE)
-
                 megs = str(int(s['file_bytes']) / 2**20)
-                g.SetCellValue(self.rowCount, 2, megs + ' MB')
-                g.SetCellAlignment(self.rowCount, 2, wx.ALIGN_CENTRE, wx.ALIGN_CENTRE)
+                g.SetCellValue(self.rowCount, 1, megs + ' MB')
+                g.SetCellAlignment(self.rowCount, 1, wx.ALIGN_CENTRE, wx.ALIGN_CENTRE)
 
                 grey = (211, 215, 207)
                 white = (255, 255, 255)
@@ -189,9 +183,9 @@ class MainWindow(wx.Frame):
                 color = grey if s['watched'] else white
                 if not s['watched'] and selected_episode == None:
                     selected_episode = self.rowCount
-                g.SetCellValue(self.rowCount, 3, watched)
-                g.SetCellBackgroundColour(self.rowCount, 3, color)
-                g.SetCellAlignment(self.rowCount, 3, wx.ALIGN_CENTRE, wx.ALIGN_CENTRE)
+                g.SetCellValue(self.rowCount, 2, watched)
+                g.SetCellBackgroundColour(self.rowCount, 2, color)
+                g.SetCellAlignment(self.rowCount, 2, wx.ALIGN_CENTRE, wx.ALIGN_CENTRE)
                 self.rowCount += 1
 
             self.SetStatusText( str(self.rowCount) + " shows found")

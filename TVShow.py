@@ -115,13 +115,12 @@ class TVShow:
 
         for episode in self.episodes:
             e_row = db.select("SELECT filename, title, watched, " + \
-                            "resolution, file_date, file_bytes " + \
+                            "file_date, file_bytes " + \
                             "FROM tv_episodes WHERE directory = ? AND filename = ?", \
                             [self.directory, episode.filename])[0]
 
             episode.title = e_row['title']
             episode.watched = e_row['watched']
-            episode.resolution = e_row['resolution']
             episode.file_date = e_row['file_date']
             episode.file_bytes = e_row['file_bytes']
 
@@ -152,8 +151,6 @@ class TVShow:
             short_filename = os.path.split(e.filename)[-1]
             e.title = short_filename.rsplit('.', 1)[0]
             e.watched = False
-            #e.resolution = get_video_res(e.filename)
-            e.resolution = '?'
             e.file_date = os.stat(e.filename).st_mtime
             e.file_bytes = os.stat(e.filename).st_size
 
@@ -174,16 +171,15 @@ class TVShow:
 
             if len(rows) == 0:
                 db.exec_sql("INSERT INTO tv_episodes(directory, filename, title, " + \
-                            "resolution, file_date, file_bytes, watched) VALUES " + \
-                            "(?, ?, ?, ?, ?, ?, ?)", \
+                            "file_date, file_bytes, watched) VALUES " + \
+                            "(?, ?, ?, ?, ?, ?)", \
                             [self.directory, e.filename, e.title, \
-                            e.resolution, e.file_date, e.file_bytes, False])
+                            e.file_date, e.file_bytes, False])
             elif len(rows) == 1:
                 # Purposely don't update 'watched' status
                 db.exec_sql("UPDATE tv_episodes SET title = ?, " + \
-                    "resolution = ?, " + \
                     "file_date = ?, file_bytes = ? WHERE directory = ? AND " + \
-                    "filename = ?", [e.title, e.resolution, e.file_date, \
+                    "filename = ?", [e.title, e.file_date, \
                     e.file_bytes, self.directory, e.filename])
             else:
                 self.log.error("More than 1 copy of %s %s existed in db" % [self.directory, e.filename])
