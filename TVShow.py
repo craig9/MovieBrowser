@@ -107,11 +107,12 @@ class TVShow:
         """If the show was in the db, and up to date (according to file dates and sizes),
         we end up here, and we use cached data"""
 
-        row = db.select("SELECT title, year, starred FROM tv_shows WHERE directory = ?", [self.directory])[0]
+        row = db.select("SELECT title, year, starred, watched FROM tv_shows WHERE directory = ?", [self.directory])[0]
 
         self.title = row['title']
         self.year = row['year']
         self.starred = row['starred'] 
+        self.watched = row['watched'] 
 
         for episode in self.episodes:
             e_row = db.select("SELECT filename, title, watched, " + \
@@ -145,6 +146,7 @@ class TVShow:
         self.title = title
         self.year = year
         self.starred = False
+        self.watched = False
 
         for e in self.episodes:
             self.log.debug("Reading episode from disk: %s" % e.filename)
@@ -162,8 +164,8 @@ class TVShow:
         if len(rows) == 0:
             self.log.debug("Inserting show %s" % self.title)
             db.exec_sql("INSERT INTO tv_shows (directory, title, year, " + \
-                        "starred) VALUES (?, ?, ?, ?)", [self.directory, \
-                        self.title, self.year, self.starred])
+                        "starred, watched) VALUES (?, ?, ?, ?, ?)", [self.directory, \
+                        self.title, self.year, self.starred, self.watched])
 
         for e in self.episodes:
             rows = db.select("SELECT * FROM tv_episodes WHERE directory = ? " + \
@@ -187,4 +189,20 @@ class TVShow:
 
             self.log.debug ("Updating db: %s - %s" % (self.directory, e.filename))
 
+
+
+    def update_watched(self, db):
+
+        self.log.debug("Checking watched status for %s" % self.title)
+
+        rows = db.select("SELECT COUNT(1) FROM tv_episodes WHERE watched = 0 AND directory = ?", \
+                [self.directory])
+        unwatched = rows[0][0]
+
+        watched = (unwatched == 0)
+
+        self.log.debug("Watched status is %s" % str(watched))
+
+        db.exec_sql("UPDATE tv_shows SET watched = ? WHERE directory = ?", \
+                    [watched, self.directory]);
 

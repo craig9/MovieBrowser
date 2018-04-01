@@ -116,7 +116,11 @@ class MainWindow(wx.Frame):
 
             self.inRoot = True
 
-            self.tv_shows = self.db.select("SELECT directory, title, year, starred FROM tv_shows ORDER BY starred, title")
+            self.tv_shows = self.db.select("SELECT directory, title, year, starred, watched FROM tv_shows WHERE starred <> 0 AND watched = 0 ORDER BY title")
+
+            more = self.db.select("SELECT directory, title, year, starred, watched FROM tv_shows WHERE NOT (starred <> 0 AND watched = 0) ORDER BY title")
+
+            self.tv_shows.extend(more)
 
             self.SetupShowsGrid()
 
@@ -138,18 +142,11 @@ class MainWindow(wx.Frame):
                 g.SetCellValue(self.rowCount, 2, str(s['year']))
                 g.SetCellAlignment(self.rowCount, 2, wx.ALIGN_CENTRE, wx.ALIGN_CENTRE)
 
-                # TODO cache these values
-                #unwatched_sql = "SELECT COUNT(1) FROM tv_episodes WHERE watched = 0 AND directory = ?"
-                #rows = self.db.select(unwatched_sql, [s['directory']])
-                #unwatched_episodes = rows[0][0]
-                unwatched_episodes = 1
-                watched = 'Yes' if unwatched_episodes == 0 else 'No'
-                color = grey if unwatched_episodes == 0 else white
+                watched = 'Yes' if s['watched'] else 'No'
+                color = grey if s['watched'] else white
                 g.SetCellValue(self.rowCount, 3, watched)
                 g.SetCellBackgroundColour(self.rowCount, 3, color)
                 g.SetCellAlignment(self.rowCount, 3, wx.ALIGN_CENTRE, wx.ALIGN_CENTRE)
-
-                # TODO show episode count?
 
                 self.rowCount += 1
 
@@ -272,6 +269,8 @@ class MainWindow(wx.Frame):
 
             self.db.exec_sql("UPDATE tv_episodes SET watched = ? WHERE directory = ?", \
                 [not watched, show['directory']])
+            self.db.exec_sql("UPDATE tv_shows SET watched = ? WHERE directory = ?", \
+                [not watched, show['directory']])
             self.Populate()
 
         else:
@@ -284,6 +283,14 @@ class MainWindow(wx.Frame):
                 newval = 1
             self.db.exec_sql("UPDATE tv_episodes SET watched = ? WHERE directory = ? AND filename = ?", \
                 [newval, episode['directory'], episode['filename']])
+
+            unwatched_sql = "SELECT COUNT(1) FROM tv_episodes WHERE watched = 0 AND directory = ?"
+            rows = self.db.select(unwatched_sql, [episode['directory']])
+            unwatched_episodes = rows[0][0]
+            watched = (unwatched_episodes == 0)
+            self.db.exec_sql("UPDATE tv_shows SET watched = ? WHERE directory = ?", \
+                [watched, episode['directory']])
+
             self.Populate(episode['directory'])
 
 

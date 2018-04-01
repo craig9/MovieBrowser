@@ -1,13 +1,7 @@
 DATA TODO:
 
-Add watched column to tv_shows
-
-
 
 INDEX TODO:
-
-Update tv_shows watched total, when out of date
-Remove tv_shows from database (when the -d flag is used)
 
 
 GUI TODO:

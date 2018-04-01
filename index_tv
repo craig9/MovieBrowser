@@ -34,7 +34,10 @@ def main():
     subdirs = get_subdirs(tv_root)
     subdir_count = len(subdirs)
 
+    # Purely check for deletions needed
     checking = "-c" in sys.argv[1:]
+
+    # Act upon those deletions
     deleting = "-d" in sys.argv[1:]
 
     log.status("%d subdirs found in tv directory" % subdir_count)
@@ -54,6 +57,8 @@ def main():
                 s.update_db(db)
 
             tv_show_list.append(s)
+
+            s.update_watched(db)
 
             progress.update_log(len(tv_show_list), len(subdirs))
 
