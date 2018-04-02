@@ -6,8 +6,5 @@ INDEX TODO:
 
 GUI TODO:
 
-Update tv_show watched when anything changes
-Use stored tv_show watched flag for performance
-Show starred and unwatched at the top, everything else below
 
 
